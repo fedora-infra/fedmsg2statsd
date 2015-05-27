@@ -19,22 +19,21 @@ import System.ZMQ3.Monadic
 
 f :: (MonadBaseControl IO m, MonadIO m) =>
      N.Family
-     -> N.SocketType -> N.ProtocolNumber -> N.SockAddr -> Text -> m ()
+  -> N.SocketType -> N.ProtocolNumber -> N.SockAddr -> Text -> m ()
 f family st p addr s = runStatsd family st p addr $
   statsdCounter ("fedmsg." <> encodeUtf8 s) 1
 
 g :: N.Family
   -> N.SocketType
-   -> N.ProtocolNumber
-   -> N.SockAddr
-   -> C8.ByteString
-   -> IO ()
+  -> N.ProtocolNumber
+  -> N.SockAddr
+  -> C8.ByteString
+  -> IO ()
 g a b c d s = case s ^? key "topic" . _String of
                    Just s' -> do
                      putStrLn $ "Increasing " ++ T.unpack s'
                      f a b c d s'
                    Nothing -> return () --putStrLn "Ouch! There was no 'topic' key!"
-
 
 main :: IO ()
 main = do
