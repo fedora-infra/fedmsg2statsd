@@ -23,6 +23,7 @@ executable fedmsg2statsd
                      , lens-aeson >= 1 && < 2
                      , monad-control
                      , network >= 2.3 && < 3
+                     , optparse-applicative >= 0.9 && < 1
                      , statsd >= 0.1 && < 1
                      , text >= 1 && < 2
                      , transformers >= 0.3
