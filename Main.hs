@@ -6,7 +6,6 @@ module Main where
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Trans.Control
 import Data.Aeson.Lens
 import qualified Data.ByteString.Char8 as C8
 import Data.Monoid
@@ -17,23 +16,21 @@ import Statsd
 import System.IO
 import System.ZMQ3.Monadic
 
-f :: (MonadBaseControl IO m, MonadIO m) =>
-     N.Family
-  -> N.SocketType -> N.ProtocolNumber -> N.SockAddr -> Text -> m ()
-f family st p addr s = runStatsd family st p addr $
-  statsdCounter ("fedmsg." <> encodeUtf8 s) 1
-
-g :: N.Family
-  -> N.SocketType
-  -> N.ProtocolNumber
-  -> N.SockAddr
-  -> C8.ByteString
-  -> IO ()
-g a b c d s = case s ^? key "topic" . _String of
-                   Just s' -> do
-                     putStrLn $ "Increasing " ++ T.unpack s'
-                     f a b c d s'
-                   Nothing -> return () --putStrLn "Ouch! There was no 'topic' key!"
+processMessage :: N.Family
+               -> N.SocketType
+               -> N.ProtocolNumber
+               -> N.SockAddr
+               -> C8.ByteString
+               -> IO ()
+processMessage fam sckType proto addr str =
+  case str ^? key "topic" . _String of
+    Just s' -> do
+      putStrLn $ "Increasing " ++ T.unpack s'
+      incCounter s'
+    Nothing -> return () --putStrLn "Ouch! There was no 'topic' key!"
+  where
+    incCounter str' = runStatsd fam sckType proto addr $
+      statsdCounter ("fedmsg." <> encodeUtf8 str') 1
 
 main :: IO ()
 main = do
@@ -51,5 +48,10 @@ main = do
     subscribe sub ""
     connect sub "tcp://hub.fedoraproject.org:9940"
     forever $ do
-      receive sub >>= liftIO . g addrFamily addrSocketType addrProtocol addrAddress
+      receive sub >>=
+        liftIO . processMessage
+                   addrFamily
+                   addrSocketType
+                   addrProtocol
+                   addrAddress
       liftIO $ hFlush stdout
